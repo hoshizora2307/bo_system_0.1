@@ -10,76 +10,34 @@ import time
 # ページの設定
 st.set_page_config(page_title="NEO QUANT SYSTEM", page_icon="⚡", layout="centered")
 
-# カスタムCSS：野暮ったさを徹底排除し、引き締まったダークコックピットを構築
+# カスタムCSS
 st.markdown("""
     <style>
-    .stApp {
-        background-color: #090a0f;
-        color: #e2e8f0;
-    }
-    h1, h2, h3, p, span, label, div {
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif !important;
-    }
-    h1 {
-        font-weight: 800 !important;
-        letter-spacing: -0.03em;
-        color: #ffffff !important;
-    }
-    section[data-testid="stSidebar"] {
-        background-color: #11131c !important;
-        border-right: 1px solid #1e2235;
-    }
+    .stApp { background-color: #090a0f; color: #e2e8f0; }
+    h1, h2, h3, p, span, label, div { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif !important; }
+    h1 { font-weight: 800 !important; letter-spacing: -0.03em; color: #ffffff !important; }
+    section[data-testid="stSidebar"] { background-color: #11131c !important; border-right: 1px solid #1e2235; }
     .stButton>button {
         background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 6px !important;
-        padding: 0.7rem 1.5rem !important;
-        font-weight: 600 !important;
-        letter-spacing: 0.05em;
-        box-shadow: 0 4px 15px rgba(29, 78, 216, 0.3);
-        transition: all 0.2s ease;
-        width: 100%;
+        color: white !important; border: none !important; border-radius: 6px !important;
+        padding: 0.7rem 1.5rem !important; font-weight: 600 !important; letter-spacing: 0.05em;
+        box-shadow: 0 4px 15px rgba(29, 78, 216, 0.3); transition: all 0.2s ease; width: 100%;
     }
-    .stButton>button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 20px rgba(29, 78, 216, 0.5);
-    }
-    div[data-testid="stMetric"] {
-        background-color: #11131c;
-        border: 1px solid #1e2235;
-        border-radius: 8px;
-        padding: 12px 16px !important;
-    }
-    div[data-testid="stMetricValue"] {
-        color: #ffffff !important;
-        font-size: 1.8rem !important;
-        font-weight: 700 !important;
-        font-family: 'JetBrains Mono', monospace !important;
-    }
-    div[data-testid="stMetricLabel"] {
-        color: #64748b !important;
-        font-size: 0.8rem !important;
-        font-weight: 600;
-        letter-spacing: 0.05em;
-    }
+    .stButton>button:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(29, 78, 216, 0.5); }
+    div[data-testid="stMetric"] { background-color: #11131c; border: 1px solid #1e2235; border-radius: 8px; padding: 12px 16px !important; }
+    div[data-testid="stMetricValue"] { color: #ffffff !important; font-size: 1.8rem !important; font-weight: 700 !important; font-family: 'JetBrains Mono', monospace !important; }
+    div[data-testid="stMetricLabel"] { color: #64748b !important; font-size: 0.8rem !important; font-weight: 600; letter-spacing: 0.05em; }
     </style>
     """, unsafe_allow_html=True)
 
-# アラート音再生関数
 def play_alert_sound():
-    sound_html = """
-    <audio autoplay><source src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" type="audio/ogg"></audio>
-    """
+    sound_html = """<audio autoplay><source src="https://actions.google.com/sounds/v1/alarms/digital_watch_alarm_long.ogg" type="audio/ogg"></audio>"""
     st.components.v1.html(sound_html, height=0, width=0)
 
-# メインヘッダー
 st.title("⚡ NEO QUANT SYSTEM")
 st.markdown("<p style='color: #64748b; margin-top: -15px;'>次世代型アルゴリズム監視モニター // 1分足リアルタイム自動更新</p>", unsafe_allow_html=True)
 st.markdown("<div style='border-bottom: 1px solid #1e2235; margin-bottom: 25px;'></div>", unsafe_allow_html=True)
 
-# サイドバー設定
-st.sidebar.markdown("<h2 style='color: #fff; font-size: 1.1rem; margin-bottom: 15px;'>⚙️ RISK SYSTEM</h2>", unsafe_allow_html=True)
 ticker = st.sidebar.text_input("通貨ペア", value="USDJPY=X")
 atr_period = st.sidebar.slider("ATRボラティリティ期間", min_value=5, max_value=30, value=14)
 consecutive_candles = st.sidebar.slider("連続同方向足カウント", min_value=2, max_value=7, value=4)
@@ -96,18 +54,18 @@ if st.button("▶ システム監視を開始する"):
         current_time_str = datetime.now().strftime("%H:%M:%S")
         status_area.markdown(f"<p style='color: #3b82f6; font-weight: 700; display: flex; align-items: center;'><span style='height: 8px; width: 8px; background-color: #3b82f6; border-radius: 50%; display: inline-block; margin-right: 8px;'></span> リアルタイム監視中 // 最新同期: {current_time_str}</p>", unsafe_allow_html=True)
         
-        # 1. データの取り込み
-        df_raw = yf.download(ticker, period="3d", interval="1m", group_by="column", progress=False)
+        # 十分な計算幅を確保するため「5日分」の1分足を安定取得
+        df_raw = yf.download(ticker, period="5d", interval="1m", group_by="column", progress=False)
         df = df_raw.copy()
         
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.get_level_values(0)
             
-        if not df.empty:
+        if not df.empty and len(df) > 50:
             if df.index.tz is None:
                 df.index = df.index.tz_localize('UTC').tz_convert('Asia/Tokyo')
 
-            # 2. 次世代フィルターロジック計算
+            # テクニカル指標の計算
             high_low = df['High'] - df['Low']
             high_cp = np.abs(df['High'] - df['Close'].shift())
             low_cp = np.abs(df['Low'] - df['Close'].shift())
@@ -117,13 +75,12 @@ if st.button("▶ システム監視を開始する"):
             
             df['Body_Size'] = np.abs(df['Close'] - df['Open'])
             df['Shock_Threshold'] = df['ATR'] * 1.8
-            
             df['Direction'] = np.where(df['Close'] > df['Open'], 1, np.where(df['Close'] < df['Open'], -1, 0))
             
-            # 3. シグナル生成
+            # シグナル判定アルゴリズム
             df['Signal'] = 0
             for i in range(len(df)):
-                if i < 20:
+                if i < 30:
                     continue
                 
                 sub_series = df['Direction'].iloc[i-consecutive_candles+1 : i+1]
@@ -133,6 +90,10 @@ if st.button("▶ システム監視を開始する"):
                 is_shock_up = df['Close'].iloc[i] > df['Open'].iloc[i] and df['Body_Size'].iloc[i] > df['Shock_Threshold'].iloc[i]
                 is_shock_down = df['Close'].iloc[i] < df['Open'].iloc[i] and df['Body_Size'].iloc[i] > df['Shock_Threshold'].iloc[i]
                 
+                # エラー・欠損値（NaN）の安全対策
+                if pd.isna(df['ATR'].iloc[i]) or pd.isna(df['ATR_MA'].iloc[i]):
+                    continue
+                    
                 is_proper_volatility = df['ATR'].iloc[i] > df['ATR_MA'].iloc[i] * 0.5 and df['ATR'].iloc[i] < df['ATR_MA'].iloc[i] * 2.5
                 
                 current_pixel_time = df.index[i].time()
@@ -146,10 +107,10 @@ if st.button("▶ システム監視を開始する"):
 
             latest_row = df.iloc[-1]
             latest_price = latest_row['Close']
-            latest_atr = latest_row['ATR']
+            latest_atr = latest_row['ATR'] if not pd.isna(latest_row['ATR']) else 0.0
             latest_sig = latest_row['Signal']
             
-            # 情報ボードの更新
+            # メトリクス表示
             with metric_area.container():
                 c1, c2, c3 = st.columns(3)
                 c1.metric("現在価格", f"{latest_price:.3f}")
@@ -169,14 +130,14 @@ if st.button("▶ システム監視を開始する"):
             else:
                 alert_area.empty()
                 
-            # --- 4. 2段式・機能美チャート（直近50分） ---
+            # チャート描画（直近50件）
             df_plot = df.tail(50)
             
             fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
                                 vertical_spacing=0.04, 
                                 row_width=[0.25, 0.75])
             
-            # 【上段】ローソク足チャート（不具合の原因だったダミーコードを徹底排除）
+            # メインローソク足
             fig.add_trace(go.Candlestick(
                 x=df_plot.index, open=df_plot['Open'], high=df_plot['High'], low=df_plot['Low'], close=df_plot['Close'],
                 name='価格',
@@ -184,29 +145,30 @@ if st.button("▶ システム監視を開始する"):
                 decreasing_line_color='#f43f5e', decreasing_fillcolor='#f43f5e'
             ), row=1, col=1)
             
-            # HIGHサイン
+            # 【絶対防弾化】HIGHシグナルが存在する場合のみ描画レイヤーを追加
             high_signals = df_plot[df_plot['Signal'] == 1]
-            fig.add_trace(go.Scatter(
-                x=high_signals.index, y=high_signals['Low'] - (high_signals['High'] - high_signals['Low'])*0.3,
-                mode='markers+text', name='HIGH', text=['▲ HIGH']*len(high_signals), textposition='bottom center',
-                marker=dict(symbol='triangle-up', size=14, color='#10b981', line=dict(color='#ffffff', width=1)),
-                textfont=dict(color='#10b981', size=11, font=dict(family='Arial Black'))
-            ), row=1, col=1)
+            if not high_signals.empty:
+                fig.add_trace(go.Scatter(
+                    x=high_signals.index, y=high_signals['Low'] - (high_signals['High'] - high_signals['Low'])*0.3,
+                    mode='markers+text', name='HIGH', text=['▲ HIGH']*len(high_signals), textposition='bottom center',
+                    marker=dict(symbol='triangle-up', size=14, color='#10b981', line=dict(color='#ffffff', width=1)),
+                    textfont=dict(color='#10b981', size=11, font=dict(family='Arial Black'))
+                ), row=1, col=1)
             
-            # LOWサイン
+            # 【絶対防弾化】LOWシグナルが存在する場合のみ描画レイヤーを追加
             low_signals = df_plot[df_plot['Signal'] == -1]
-            fig.add_trace(go.Scatter(
-                x=low_signals.index, y=low_signals['High'] + (low_signals['High'] - low_signals['Low'])*0.3,
-                mode='markers+text', name='LOW', text=['▼ LOW']*len(low_signals), textposition='top center',
-                marker=dict(symbol='triangle-down', size=14, color='#f43f5e', line=dict(color='#ffffff', width=1)),
-                textfont=dict(color='#f43f5e', size=11, font=dict(family='Arial Black'))
-            ), row=1, col=1)
+            if not low_signals.empty:
+                fig.add_trace(go.Scatter(
+                    x=low_signals.index, y=low_signals['High'] + (low_signals['High'] - low_signals['Low'])*0.3,
+                    mode='markers+text', name='LOW', text=['▼ LOW']*len(low_signals), textposition='top center',
+                    marker=dict(symbol='triangle-down', size=14, color='#f43f5e', line=dict(color='#ffffff', width=1)),
+                    textfont=dict(color='#f43f5e', size=11, font=dict(family='Arial Black'))
+                ), row=1, col=1)
             
-            # 【下段】ATRボラティリティ
+            # 下段ATR
             fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot['ATR'], name='ATR', line=dict(color='#3b82f6', width=2)), row=2, col=1)
             fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot['ATR_MA'], name='ATR基準線', line=dict(color='rgba(100, 116, 139, 0.4)', width=1.5, dash='dot')), row=2, col=1)
             
-            # レイアウト調整
             fig.update_layout(
                 paper_bgcolor='#08090c', plot_bgcolor='#08090c',
                 xaxis=dict(gridcolor='#161923', rangeslider_visible=False, showticklabels=False),
@@ -220,6 +182,6 @@ if st.button("▶ システム監視を開始する"):
             chart_area.plotly_chart(fig, use_container_width=True)
             
         else:
-            status_area.error("データノードに接続中...")
+            status_area.error("データストリームが安定するまで待機中（データ件数不足）...")
             
         time.sleep(60)
