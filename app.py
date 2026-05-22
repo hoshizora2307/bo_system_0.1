@@ -7,18 +7,16 @@ from plotly.subplots import make_subplots
 from datetime import datetime, timedelta, time as datetime_time
 import time
 
-# ページの設定（横幅をスマートに使うためレイアウトを微調整）
+# ページの設定
 st.set_page_config(page_title="NEO QUANT SYSTEM", page_icon="⚡", layout="centered")
 
 # カスタムCSS：野暮ったさを徹底排除し、引き締まったダークコックピットを構築
 st.markdown("""
     <style>
-    /* 全体を重厚感のある漆黒（ダークチャコール）に */
     .stApp {
         background-color: #090a0f;
         color: #e2e8f0;
     }
-    /* フォントを無機質で知的なデザインに統一 */
     h1, h2, h3, p, span, label, div {
         font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif !important;
     }
@@ -27,12 +25,10 @@ st.markdown("""
         letter-spacing: -0.03em;
         color: #ffffff !important;
     }
-    /* サイドバーの背景と境界線をシャープに */
     section[data-testid="stSidebar"] {
         background-color: #11131c !important;
         border-right: 1px solid #1e2235;
     }
-    /* 起動ボタン：フラットで未来的なインディゴブルー。無駄な丸みを排除 */
     .stButton>button {
         background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
         color: white !important;
@@ -49,7 +45,6 @@ st.markdown("""
         transform: translateY(-1px);
         box-shadow: 0 6px 20px rgba(29, 78, 216, 0.5);
     }
-    /* メトリクス（情報パネル）：枠線を薄くし、背景に溶け込ませる */
     div[data-testid="stMetric"] {
         background-color: #11131c;
         border: 1px solid #1e2235;
@@ -113,7 +108,6 @@ if st.button("▶ システム監視を開始する"):
                 df.index = df.index.tz_localize('UTC').tz_convert('Asia/Tokyo')
 
             # 2. 次世代フィルターロジック計算
-            # ATR (True Range) 
             high_low = df['High'] - df['Low']
             high_cp = np.abs(df['High'] - df['Close'].shift())
             low_cp = np.abs(df['Low'] - df['Close'].shift())
@@ -121,11 +115,9 @@ if st.button("▶ システム監視を開始する"):
             df['ATR'] = tr.rolling(window=atr_period).mean()
             df['ATR_MA'] = df['ATR'].rolling(window=20).mean()
             
-            # ショック・プライス（急激な大荒れ）の検知
             df['Body_Size'] = np.abs(df['Close'] - df['Open'])
             df['Shock_Threshold'] = df['ATR'] * 1.8
             
-            # ローソク足方向
             df['Direction'] = np.where(df['Close'] > df['Open'], 1, np.where(df['Close'] < df['Open'], -1, 0))
             
             # 3. シグナル生成
@@ -134,16 +126,13 @@ if st.button("▶ システム監視を開始する"):
                 if i < 20:
                     continue
                 
-                # 連続同方向足の確認
                 sub_series = df['Direction'].iloc[i-consecutive_candles+1 : i+1]
                 is_all_up = (sub_series == 1).all()
                 is_all_down = (sub_series == -1).all()
                 
-                # 急騰・急落
                 is_shock_up = df['Close'].iloc[i] > df['Open'].iloc[i] and df['Body_Size'].iloc[i] > df['Shock_Threshold'].iloc[i]
                 is_shock_down = df['Close'].iloc[i] < df['Open'].iloc[i] and df['Body_Size'].iloc[i] > df['Shock_Threshold'].iloc[i]
                 
-                # 適正ボラティリティ判定
                 is_proper_volatility = df['ATR'].iloc[i] > df['ATR_MA'].iloc[i] * 0.5 and df['ATR'].iloc[i] < df['ATR_MA'].iloc[i] * 2.5
                 
                 current_pixel_time = df.index[i].time()
@@ -173,7 +162,6 @@ if st.button("▶ システム監視を開始する"):
                     else:
                         st.markdown("<div style='background-color: #11131c; border: 1px solid #1e2235; border-radius:6px; padding: 10px; text-align:center; color:#64748b; font-weight:600; font-size:0.85rem; margin-top:2px;'>⏳ チャンス待機中</div>", unsafe_allow_html=True)
             
-            # シグナル点灯時の音アラート
             if latest_sig != 0:
                 with alert_area:
                     st.markdown("<div style='background: #11131c; color: #3b82f6; border: 1px solid #3b82f6; padding: 12px; border-radius: 6px; font-weight:600; margin-bottom:15px; font-size:0.85rem;'>🚨 アルゴリズムが優位性を検知。エントリータイミング。</div>", unsafe_allow_html=True)
@@ -181,44 +169,44 @@ if st.button("▶ システム監視を開始する"):
             else:
                 alert_area.empty()
                 
-            # --- 4. 無駄を削ぎ落とした2段式・機能美チャート（直近50分） ---
+            # --- 4. 2段式・機能美チャート（直近50分） ---
             df_plot = df.tail(50)
             
             fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
                                 vertical_spacing=0.04, 
                                 row_width=[0.25, 0.75])
             
-            # 【上段】ローソク足チャート
+            # 【上段】ローソク足チャート（不具合の原因だったダミーコードを徹底排除）
             fig.add_trace(go.Candlestick(
                 x=df_plot.index, open=df_plot['Open'], high=df_plot['High'], low=df_plot['Low'], close=df_plot['Close'],
-                name='価格', Chelsea_color=True,
-                increasing_line_color='#10b981', increasing_fillcolor='#10b981', # 陽線：無機質なエメラルド
-                decreasing_line_color='#f43f5e', decreasing_fillcolor='#f43f5e'  # 陰線：シャープなレッド
+                name='価格',
+                increasing_line_color='#10b981', increasing_fillcolor='#10b981', 
+                decreasing_line_color='#f43f5e', decreasing_fillcolor='#f43f5e'
             ), row=1, col=1)
             
-            # HIGHサイン（無駄な文字を省き、洗練された▲マークに統合）
+            # HIGHサイン
             high_signals = df_plot[df_plot['Signal'] == 1]
             fig.add_trace(go.Scatter(
                 x=high_signals.index, y=high_signals['Low'] - (high_signals['High'] - high_signals['Low'])*0.3,
-                mode='markers+text', name='HIGHサイン', text=['▲ HIGH']*len(high_signals), textposition='bottom center',
+                mode='markers+text', name='HIGH', text=['▲ HIGH']*len(high_signals), textposition='bottom center',
                 marker=dict(symbol='triangle-up', size=14, color='#10b981', line=dict(color='#ffffff', width=1)),
                 textfont=dict(color='#10b981', size=11, font=dict(family='Arial Black'))
             ), row=1, col=1)
             
-            # LOWサイン（洗練された▼マーク）
+            # LOWサイン
             low_signals = df_plot[df_plot['Signal'] == -1]
             fig.add_trace(go.Scatter(
                 x=low_signals.index, y=low_signals['High'] + (low_signals['High'] - low_signals['Low'])*0.3,
-                mode='markers+text', name='LOWサイン', text=['▼ LOW']*len(low_signals), textposition='top center',
+                mode='markers+text', name='LOW', text=['▼ LOW']*len(low_signals), textposition='top center',
                 marker=dict(symbol='triangle-down', size=14, color='#f43f5e', line=dict(color='#ffffff', width=1)),
                 textfont=dict(color='#f43f5e', size=11, font=dict(family='Arial Black'))
             ), row=1, col=1)
             
-            # 【下段】ATRボラティリティ（余計な背景色を塗らず、スマートな一本のラインに）
-            fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot['ATR'], name='ATR (市場エネルギー)', line=dict(color='#3b82f6', width=2)), row=2, col=1)
+            # 【下段】ATRボラティリティ
+            fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot['ATR'], name='ATR', line=dict(color='#3b82f6', width=2)), row=2, col=1)
             fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot['ATR_MA'], name='ATR基準線', line=dict(color='rgba(100, 116, 139, 0.4)', width=1.5, dash='dot')), row=2, col=1)
             
-            # チャート全体を部屋の照明を落としても眩しくない洗練された「トーン」に調整
+            # レイアウト調整
             fig.update_layout(
                 paper_bgcolor='#08090c', plot_bgcolor='#08090c',
                 xaxis=dict(gridcolor='#161923', rangeslider_visible=False, showticklabels=False),
