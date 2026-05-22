@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import numpy as np
-import plotly.graph_objects as px
+import plotly.graph_objects as go
 from datetime import datetime, timedelta, time as datetime_time
 
 # ページの設定
@@ -32,6 +32,7 @@ rsi_period = st.sidebar.slider("RSI期間", min_value=5, max_value=30, value=14)
 
 if st.button("▶ RUN BACKTEST (システム起動)"):
     with st.spinner("MARKET DATA DOWNLOADING..."):
+        # 直近7日間の1分足データを安定取得
         df_raw = yf.download(ticker, period="7d", interval="1m", group_by="column")
         df = df_raw.copy()
         
@@ -41,7 +42,7 @@ if st.button("▶ RUN BACKTEST (システム起動)"):
         if df.empty:
             st.error("データの取得に失敗しました。時間をおいて試すか、設定を確認してください。")
         else:
-            # テクニカル計算
+            # テクニカル計算（ボリンジャーバンド & RSI）
             df['BB_Mid'] = df['Close'].rolling(window=bb_p).mean()
             df['BB_Std'] = df['Close'].rolling(window=bb_p).std()
             df['BB_Upper'] = df['BB_Mid'] + (df['BB_Std'] * 2)
@@ -66,7 +67,7 @@ if st.button("▶ RUN BACKTEST (システム起動)"):
             df.loc[cond_rsi_low & cond_bb_lower & cond_time, 'Signal'] = 1
             df.loc[cond_rsi_high & cond_bb_upper & cond_time, 'Signal'] = -1
             
-            # 勝敗判定
+            # 勝敗判定（5分判定、ペイアウト1.85倍）
             judge_minutes = 5
             payout_rate = 1.85
             entry_amount = 1000
@@ -93,36 +94,37 @@ if st.button("▶ RUN BACKTEST (システム起動)"):
                 win_rate = (num_wins / num_trades) * 100
                 total_profit = trades['Profit'].sum()
                 
+                # 画面上に数字を表示
                 col1, col2, col3 = st.columns(3)
                 col1.metric("総トレード数", f"{num_trades} 回")
                 col2.metric("勝率", f"{win_rate:.2f} %")
                 col3.metric("総損益", f"{total_profit:,} 円")
                 
-                # --- 【新規追加】インタラクティブ・シグナルチャートの描画 ---
+                # --- インタラクティブ・シグナルチャートの描画 ---
                 st.markdown("### 📊 SIGNAL CHART (直近データ)")
                 
-                # 直近200データ分に絞って見やすく描画
+                # 直近200データ分（約3時間分）に絞って見やすく描画
                 df_plot = df.tail(200)
                 
-                fig = px.Figure()
+                fig = go.Figure()
                 
                 # 価格ライン（マトリックスグリーン）
-                fig.add_trace(px.Scatter(x=df_plot.index, y=df_plot['Close'], name='Price', line=dict(color='#00FF41', width=2)))
-                # ボリバン上限・下限（うっすら緑）
-                fig.add_trace(px.Scatter(x=df_plot.index, y=df_plot['BB_Upper'], name='BB Upper', line=dict(color='rgba(0, 255, 65, 0.3)', dash='dash')))
-                fig.add_trace(px.Scatter(x=df_plot.index, y=df_plot['BB_Lower'], name='BB Lower', line=dict(color='rgba(0, 255, 65, 0.3)', dash='dash')))
+                fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot['Close'], mode='lines', name='Price', line=dict(color='#00FF41', width=2)))
+                # ボリバン上限・下限（うっすら緑の破線）
+                fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot['BB_Upper'], name='BB Upper', line=dict(color='rgba(0, 255, 65, 0.3)', dash='dash')))
+                fig.add_trace(go.Scatter(x=df_plot.index, y=df_plot['BB_Lower'], name='BB Lower', line=dict(color='rgba(0, 255, 65, 0.3)', dash='dash')))
                 
                 # HIGHサイン（上向き矢印：水色）
                 high_signals = df_plot[df_plot['Signal'] == 1]
-                fig.add_trace(px.Scatter(x=high_signals.index, y=high_signals['Close'], mode='markers', name='HIGH (Buy)',
+                fig.add_trace(go.Scatter(x=high_signals.index, y=high_signals['Close'], mode='markers', name='HIGH (Buy)',
                                          marker=dict(symbol='triangle-up', size=14, color='#00FFFF', line=dict(width=2))))
                 
                 # LOWサイン（下向き矢印：ピンク）
                 low_signals = df_plot[df_plot['Signal'] == -1]
-                fig.add_trace(px.Scatter(x=low_signals.index, y=low_signals['Close'], mode='markers', name='LOW (Sell)',
+                fig.add_trace(go.Scatter(x=low_signals.index, y=low_signals['Close'], mode='markers', name='LOW (Sell)',
                                          marker=dict(symbol='triangle-down', size=14, color='#FF00FF', line=dict(width=2))))
                 
-                # チャートの背景を黒に統一
+                # チャートのデザインを黒に統一
                 fig.update_layout(
                     paper_bgcolor='black', plot_bgcolor='black',
                     xaxis=dict(gridcolor='#113311', title='Time'), yaxis=dict(gridcolor='#113311', title='Price'),
